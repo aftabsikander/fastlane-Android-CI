@@ -205,9 +205,9 @@ If you are using Gitlab you will need the [GitLab Plugin](https://wiki.jenkins-c
 ## Todo
 
 + [x] Support Multiple Crashlytics accounts
-+ [ ]  Inject required credentials from CI environment variable
-+ [ ]  Setup Travis-CI/Circle-CI/GitLab-CI
-+ [ ]  Support Slack/EmailNotifications
++ [x] Setup Travis-CI/Circle-CI/GitLab-CI
++ [ ] Inject required credentials from CI environment variable
++ [ ] Support Slack/EmailNotifications
 
 
 
