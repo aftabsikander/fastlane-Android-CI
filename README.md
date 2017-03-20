@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/aftabsikander/fastlane-Android-CI.svg?branch=master)](https://travis-ci.org/aftabsikander/fastlane-Android-CI)
 # Introduction
 Creating Android App always involves tracking its [Version Code](#version-code) and [Version Name](#version-name) across different [Product Flavors](#product-flavors) and increment these values when shipping new feature into the market this process may be tedious and error prone. This project shows how we can automate this process with the combination of gradle and Fastlane. 
 
