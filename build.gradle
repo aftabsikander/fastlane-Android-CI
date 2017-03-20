@@ -1,0 +1,302 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.3.0'
+    }
+}
+
+allprojects {
+    repositories {
+        jcenter()
+    }
+
+    project.ext {
+        productionVersionFilePath = file(rootProject.projectDir.getAbsolutePath() + '/productionVersion.properties').absolutePath
+        productionErrorVersionFilePath = file(rootProject.projectDir.getAbsolutePath() + '/productionErrorVersion.properties').absolutePath
+
+        qaVersionFilePath = file(rootProject.projectDir.getAbsolutePath() + '/qaVersion.properties').absolutePath
+        qaErrorVersionFilePath = file(rootProject.projectDir.getAbsolutePath() + '/qaErrorVersion.properties').absolutePath
+
+        developmentVersionFilePath = file(rootProject.projectDir.getAbsolutePath() + '/developmentVersion.properties').absolutePath
+        developmentErrorVersionFilePath = file(rootProject.projectDir.getAbsolutePath() + '/developmentErrorVersion.properties').absolutePath
+
+        productionFlavor = "production"
+        qaFlavor = "qa"
+        developmentFlavor = "development"
+    }
+
+    /***
+     * Increment version code for application according to Build variant, store the updated value back to respective version file
+     * @param buildType Select Build Variant for displaying version name
+     *
+     */
+    project.ext.incrementVersionCode = {
+        String buildType = "buildVariant" ->
+            println "-----------------------------------------------------------------------------"
+            println "              Executing VersionCode increment                     "
+            println "-----------------------------------------------------------------------------"
+
+            def versionPropsFile;
+            def errorVersionFile;
+            if (buildType == productionFlavor) {
+                versionPropsFile = file(project.ext.productionVersionFilePath)
+                errorVersionFile = file(project.ext.productionErrorVersionFilePath)
+            } else if (buildType == qaFlavor) {
+                versionPropsFile = file(project.ext.qaVersionFilePath)
+                errorVersionFile = file(project.ext.qaErrorVersionFilePath)
+            } else if (buildType == developmentFlavor) {
+                versionPropsFile = file(project.ext.developmentVersionFilePath)
+                errorVersionFile = file(project.ext.developmentErrorVersionFilePath)
+            } else
+                throw new GradleException("Unknown app variant type")
+
+            if (versionPropsFile.canRead()) {
+                def version = project.ext.readVersionFile(buildType)
+                def errorVersion = project.ext.readErrorVersionFile(buildType)
+                def build = version['VERSION_CODE'] as int
+                errorVersion['VERSION_CODE'] = build.toString()
+                build++
+                version['VERSION_CODE'] = build.toString()
+
+                def stream = new FileOutputStream(versionPropsFile)
+                try {
+                    version.store(stream, null);
+                } finally {
+                    stream.close()
+                }
+
+                def errorStream = new FileOutputStream(errorVersionFile)
+                try {
+                    errorVersion.store(errorStream, null);
+                } finally {
+                    errorStream.close()
+                }
+
+                println "Version Code is now... " + build
+            } else {
+                throw new GradleException("Could not read version.properties!")
+            }
+    }
+
+    /***
+     * Increment version code for application according to Build variant, store the updated value back to respective version file
+     * @param buildType Select Build Variant for displaying version name
+     * @param versionType Select version type i.e (Major,Minor,Patch)
+     *
+     */
+    project.ext.incrementVersionName = {
+        String buildType = "buildVariant", String versionType = "Version i.e(Major,Minor,Patch,Build)" ->
+
+            println "-----------------------------------------------------------------------------"
+            println "              Executing VersionName increment                     "
+            println "-----------------------------------------------------------------------------"
+
+            def versionPropsFile;
+            def errorVersionFile;
+            if (buildType == productionFlavor) {
+                versionPropsFile = file(project.ext.productionVersionFilePath)
+                errorVersionFile = file(project.ext.productionErrorVersionFilePath)
+            } else if (buildType == qaFlavor) {
+                versionPropsFile = file(project.ext.qaVersionFilePath)
+                errorVersionFile = file(project.ext.qaErrorVersionFilePath)
+            } else if (buildType == developmentFlavor) {
+                versionPropsFile = file(project.ext.developmentVersionFilePath)
+                errorVersionFile = file(project.ext.developmentErrorVersionFilePath)
+            } else
+                throw new GradleException("Unknown app variant type")
+
+            if (versionPropsFile.canRead()) {
+                def version = project.ext.readVersionFile(buildType)
+                def errorVersion = project.ext.readErrorVersionFile(buildType)
+                def currentMajorVersion = version['VERSION_MAJOR'] as int
+                def currentMinorVersion = version['VERSION_MINOR'] as int
+                def currentPatchVersion = version['VERSION_PATCH'] as int
+                def currentBuildNumber = version['VERSION_BUILD'] as int
+
+                currentBuildNumber = System.getenv("BUILD_NUMBER") as Integer ?: currentBuildNumber + 1
+
+                if (errorVersionFile.canRead()) {
+                    errorVersion['VERSION_MAJOR'] = currentMajorVersion.toString()
+                    errorVersion['VERSION_MINOR'] = currentMinorVersion.toString()
+                    errorVersion['VERSION_PATCH'] = currentPatchVersion.toString()
+                    errorVersion['VERSION_BUILD'] = currentBuildNumber.toString()
+                }
+
+                if (versionType == 'Major') {
+                    currentMajorVersion++
+                    currentMinorVersion = 0
+                    currentPatchVersion = 0
+                } else if (versionType == 'Minor') {
+                    currentMinorVersion++
+                    currentPatchVersion = 0
+                } else if (versionType == 'Patch') {
+                    currentPatchVersion++
+                } else if (versionType == 'Build') {
+                    //Do nothing as we need to increment build number locally or read from jenkins
+                } else {
+                    throw new GradleException("version Type not recognized, Please write (Major,Minor,Patch,Build)")
+                }
+
+                version['VERSION_MAJOR'] = currentMajorVersion.toString()
+                version['VERSION_MINOR'] = currentMinorVersion.toString()
+                version['VERSION_PATCH'] = currentPatchVersion.toString()
+                version['VERSION_BUILD'] = currentBuildNumber.toString()
+
+                def stream = new FileOutputStream(versionPropsFile)
+                try {
+                    version.store(stream, null);
+                } finally {
+                    stream.close()
+                }
+                def errorStream = new FileOutputStream(errorVersionFile)
+                try {
+                    errorVersion.store(errorStream, null);
+                } finally {
+                    errorStream.close()
+                }
+
+                println "Version is now... " + currentMajorVersion + "." + currentMinorVersion + "." + currentPatchVersion + "(" + currentBuildNumber + ")"
+
+                return currentMajorVersion + "." + currentMinorVersion + "." + currentPatchVersion + "(" + currentBuildNumber + ")"
+            }
+    }
+
+    project.ext.readVersionFile = {
+        String buildType = "buildVariant" ->
+            def versionPropsFile;
+            if (buildType == productionFlavor)
+                versionPropsFile = file(project.ext.productionVersionFilePath)
+            else if (buildType == qaFlavor)
+                versionPropsFile = file(project.ext.qaVersionFilePath)
+            else if (buildType == developmentFlavor)
+                versionPropsFile = file(project.ext.developmentVersionFilePath)
+            else
+                throw new GradleException("Unknown app variant type")
+
+            if (versionPropsFile.canRead()) {
+                def Properties versionProps = new Properties()
+                versionProps.load(new FileInputStream(versionPropsFile))
+                return versionProps;
+            } else {
+                throw new GradleException("Could not read version.properties!")
+            }
+    }
+
+    project.ext.revertVersionCodeAndName = {
+        String buildVariantType = "buildVariant" ->
+            println "-----------------------------------------------------------------------------"
+            println "              Reverting VersionCode And Version Name                    "
+            println "-----------------------------------------------------------------------------"
+
+            def versionPropsFile;
+            //def errorVersionFile;
+            if (buildVariantType == productionFlavor) {
+                versionPropsFile = file(project.ext.productionVersionFilePath)
+                //errorVersionFile = file(project.ext.productionErrorVersionFilePath)
+            } else if (buildVariantType == qaFlavor) {
+                versionPropsFile = file(project.ext.qaVersionFilePath)
+                //errorVersionFile = file(project.ext.qaErrorVersionFilePath)
+            } else if (buildVariantType == developmentFlavor) {
+                versionPropsFile = file(project.ext.developmentVersionFilePath)
+                //errorVersionFile = file(project.ext.developmentErrorVersionFilePath)
+            } else
+                throw new GradleException("Unknown app variant type")
+
+            if (versionPropsFile.canRead()) {
+                def version = project.ext.readVersionFile(buildVariantType)
+                def errorVersion = project.ext.readErrorVersionFile(buildVariantType)
+
+                def currentBuildCode = version['VERSION_CODE'] as int
+                def currentMajorVersion = version['VERSION_MAJOR'] as int
+                def currentMinorVersion = version['VERSION_MINOR'] as int
+                def currentPatchVersion = version['VERSION_PATCH'] as int
+                def currentBuildNumber = version['VERSION_BUILD'] as int
+
+                println "Current Version Code is: " + currentBuildCode
+                println "Current Version is now... " + currentMajorVersion + "." + currentMinorVersion + "." + currentPatchVersion + "(" + currentBuildNumber + ")"
+                println "-----------------------------------------------------------------------------"
+
+                //Get All values from Property
+                def oldBuildNumber = errorVersion['VERSION_CODE'] as int
+                def oldMajorVersion = errorVersion['VERSION_MAJOR'] as int
+                def oldMinorVersion = errorVersion['VERSION_MINOR'] as int
+                def oldPatchVersion = errorVersion['VERSION_PATCH'] as int
+                def currentErrorBuildNumber = errorVersion['VERSION_BUILD'] as int
+
+                //Set All values back to Property File
+                version['VERSION_CODE'] = oldBuildNumber.toString()
+                version['VERSION_MAJOR'] = oldMajorVersion.toString()
+                version['VERSION_MINOR'] = oldMinorVersion.toString()
+                version['VERSION_PATCH'] = oldPatchVersion.toString()
+                version['VERSION_BUILD'] = currentBuildNumber.toString()
+
+                println "Reverted Version Code is: " + oldBuildNumber
+                println "Reverted Version is now... " + oldMajorVersion + "." + oldMinorVersion + "." + oldPatchVersion + "(" + currentErrorBuildNumber + ")"
+                println "-----------------------------------------------------------------------------"
+
+                def stream = new FileOutputStream(versionPropsFile)
+                try {
+                    version.store(stream, null);
+                } finally {
+                    stream.close()
+                }
+            } else {
+                throw new GradleException("Could not read version.properties!")
+            }
+    }
+
+    /***
+     * Load Error Version Property File
+     */
+    project.ext.readErrorVersionFile = {
+        String buildType = "buildVariant" ->
+            def versionPropsFile;
+            if (buildType == productionFlavor)
+                versionPropsFile = file(project.ext.productionErrorVersionFilePath)
+            else if (buildType == qaFlavor)
+                versionPropsFile = file(project.ext.qaErrorVersionFilePath)
+            else if (buildType == developmentFlavor)
+                versionPropsFile = file(project.ext.developmentErrorVersionFilePath)
+            else
+                throw new GradleException("Unknown app variant type")
+            if (versionPropsFile.canRead()) {
+                def Properties versionProps = new Properties()
+                versionProps.load(new FileInputStream(versionPropsFile))
+                return versionProps;
+            } else {
+                throw new GradleException("Could not read error version.properties!")
+            }
+    }
+
+    /***
+     * This is used to write updated version name to jenkins file which will be used by jenkins prefix variable
+     */
+    project.ext.writeToJenkinFile = {
+        String messageToWrite = "version number to be written" ->
+            def versionPropsFile = file('jenkinversion.txt')
+            if (versionPropsFile.canRead()) {
+                versionPropsFile.write(messageToWrite)
+                println "Version number which is written in Jenkins file is: " + messageToWrite
+            } else {
+                println "File does not exist"
+                //throw new GradleException("Could not read version.properties!")
+            }
+    }
+}
+
+
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+
+
+
+
+
+
+

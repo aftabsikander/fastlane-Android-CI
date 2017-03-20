@@ -1,0 +1,143 @@
+fastlane_version "1.110.0"
+
+default_platform :android
+
+version = ""
+user = ""
+commitMessage=""
+platform :android do
+  before_all do
+  	reset_git_repo(force: true,
+  		files:[ "productionVersion.properties",
+  		  	    "productionErrorVersion.properties",
+  		  	    "developmentVersion.properties",
+  		  	  	"developmentErrorVersion.properties",
+  		  	  	"qaVersion.properties",
+  		  	  	"qaErrorVersion.properties"
+  		  	  ]
+  	)
+  	if is_ci?
+ 		user = "Jenkins"
+ 		puts "This lane is executed by Jenkins "+version
+	else
+ 		user = "Manual"
+ 		puts "This lane is executed Mannually "+version
+ 	end
+
+    #Get Last commit
+	commit = last_git_commit
+	keyWordFound=""
+	commitMessage = commit[:message]
+	puts "last git commit : "+commitMessage
+	matchdata = commitMessage.match(/\[(Major|Minor|Patch|Build*?)\]/i)
+	if matchdata.nil?
+		puts "Not Found"
+		keyWordFound="Build"
+	else
+		matchdata.captures
+		puts matchdata[1]
+		keyWordFound=matchdata[1]
+	end
+	if (keyWordFound== "Major"||keyWordFound== "major")
+		version ="Major"
+	elsif (keyWordFound== "Minor"||keyWordFound== "minor")
+		version ="Minor"
+	elsif (keyWordFound== "Patch"||keyWordFound== "patch")
+		version ="Patch"
+	else
+		version ="Build"
+	end
+
+	puts "Found Version Bump From Last Commit: "+version
+  end
+
+ desc "Generate Build for Development Variant and Deploy it on Internal Fabric"
+ lane :devVariant do |options|
+ 	ensure_git_branch(branch: 'master')
+ 	task_properties={
+              "buildVariantType" => "development",
+              "versionType" => version
+            }
+ 	gradle(task: "clean")
+ 	gradle(task: "performVersionCodeAndVersionNumberIncrement",properties: task_properties)
+ 	gradle(task: "assembleDevelopmentRelease")
+
+  # The crashlytics action knows how to use the generated changelog automatically
+ 
+  crashlytics(
+    api_token:  ENV["CRASHLYTICS_INTERNAL_API_TOKEN"] ,
+    build_secret:  ENV["CRASHLYTICS_INTERNAL_API_SECRET"],
+    notes: commitMessage,
+    notifications: true,
+    groups: ['fastlane-tester']
+    )
+  end
+
+  desc "Generate Build for Qa Variant and Deploy it on Internal Fabric"
+ lane :qaVariant do |options|
+	ensure_git_branch(branch: 'master')
+ 	task_properties={
+              "buildVariantType" => "qa",
+              "versionType" => version
+            }
+ 	gradle(task: "clean")
+ 	gradle(task: "performVersionCodeAndVersionNumberIncrement",properties: task_properties)
+ 	gradle(task: "assembleQaRelease")
+
+
+  # The crashlytics action knows how to use the generated changelog automatically
+  crashlytics(
+    api_token: ENV["CRASHLYTICS_INTERNAL_API_TOKEN"] ,
+    build_secret: ENV["CRASHLYTICS_INTERNAL_API_SECRET"],
+    notes: commitMessage,
+    notifications: true,
+    groups: ['fastlane-tester']
+    )
+
+ end
+
+ # This block is called, only if the executed lane was successful
+  after_all do |lane, options|
+  fileCommitArray=Array.new(2)
+  messageForCommit=""
+    if lane == :devVariant
+    	puts "devVarient"
+    	fileCommitArray=["developmentErrorVersion.properties", "developmentVersion.properties"]
+    	messageForCommit="[ci-skip] Version Bump For Development Variant by " + user
+     	
+	elsif lane == :qaVariant
+     	puts "qaVarient"
+     	fileCommitArray=["qaErrorVersion.properties", "qaVersion.properties"]
+    	messageForCommit="[ci-skip] Version Bump For QA Variant by " + user
+    end
+    
+    git_commit(path:fileCommitArray, message:messageForCommit)
+    
+    	#remote: "origin",         # optional, default: "origin"
+    push_to_git_remote(
+    	local_branch: "master",  # optional, aliased by "branch", default: "master"
+    	remote_branch: "master", # optional, default is set to local_branch
+    	force: true,    # optional, default: false
+    	tags: false     # optional, default: true
+    	)
+    
+  end
+
+  error do |lane, exception|
+  puts exception.message
+  fileArray=Array.new(2)
+    if lane == :devVariant
+    	fileArray=["developmentErrorVersion.properties", "developmentVersion.properties"]
+	elsif lane == :qaVariant
+		fileArray=["qaErrorVersion.properties", "qaVersion.properties"]
+    end
+  
+  reset_git_repo(force: true, files:fileArray)
+  if is_ci
+      #slack(message: exception.message,success: false)
+
+    end
+   
+  end
+end
+

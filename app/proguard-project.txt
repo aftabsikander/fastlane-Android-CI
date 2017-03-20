@@ -1,0 +1,71 @@
+-dontwarn com.google.android.gms.**
+-dontwarn com.github.siyamed.shapeimageview.**
+-keepattributes Signature
+-keepattributes *Annotation*, EnclosingMethod
+-dontwarn com.google.android.gms.**
+-dontwarn android.support.**
+
+-optimizationpasses 25
+-dontusemixedcaseclassnames
+-dontpreverify
+-verbose
+-printmapping out.map
+-renamesourcefileattribute SourceFile
+-keepattributes SourceFile,LineNumberTable
+
+-dontshrink
+-keep class ** { *; }
+
+
+
+# GOOGLE
+-keep class com.android.vending.billing.**
+
+# SAMSUNG
+-keep class com.sec.android.iap.**
+
+# TStore
+-dontwarn android.webkit.WebView
+
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Application
+-keep public class * extends android.app.Service
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.content.ContentProvider
+-keep public class * extends android.app.backup.BackupAgentHelper
+-keep public class * extends android.preference.Preference
+-keep public class com.android.vending.licensing.ILicensingService
+
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+-keepclasseswithmembers class * {
+    public <init>(android.content.Context, android.util.AttributeSet);
+}
+
+-keepclasseswithmembers class * {
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+}
+
+-keepclassmembers class * extends android.app.Activity {
+   public void *(android.view.View);
+}
+
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+-keep class * implements android.os.Parcelable {
+  public static final android.os.Parcelable$Creator *;
+}
+-keep class com.google.android.exoplayer.** { *; }
+
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** w(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+

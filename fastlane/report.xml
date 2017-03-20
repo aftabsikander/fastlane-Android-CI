@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+    <testsuite name="fastlane.lanes">
+
+
+        <testcase classname="fastlane.lanes" name="00: Verifying required fastlane version"
+            time="0.002711">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="01: default_platform" time="0.002754">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="02: reset_git_repo" time="0.400486">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="03: is_ci" time="0.00233">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="04: last_git_commit" time="0.0905">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="05: ensure_git_branch" time="0.008947">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="06: gradle" time="4.887601">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="07: gradle" time="2.214391">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="08: gradle" time="60.557608">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="09: reset_git_repo" time="0.583546">
+
+        </testcase>
+
+
+        <testcase classname="fastlane.lanes" name="10: is_ci" time="0.002406">
+
+        </testcase>
+
+    </testsuite>
+</testsuites>

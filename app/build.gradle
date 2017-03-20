@@ -1,0 +1,190 @@
+buildscript {
+    repositories {
+        maven { url 'https://maven.fabric.io/public' }
+    }
+
+    dependencies {
+        classpath 'io.fabric.tools:gradle:1.+'
+    }
+}
+apply plugin: 'com.android.application'
+apply plugin: 'io.fabric'
+apply from: '../config/quality.gradle'
+
+repositories {
+    maven { url 'https://maven.fabric.io/public' }
+}
+
+
+project.afterEvaluate {
+    /***
+     * Gradle Custom Task for incrementing versionCode & versionNumber According to Build Variant and version type
+     */
+    task performVersionCodeAndVersionNumberIncrement {
+        description 'Task for incrementing versionCode & versionNumber According to Build Variant and version type'
+        doLast {
+            println "-----------------------------------------------------------------------------"
+            println "              Executing VersionCode & versionName method                    "
+            println "-----------------------------------------------------------------------------"
+            println "Incrementing " + versionType + " version for " + buildVariantType + " release"
+            project.ext.incrementVersionCode(buildVariantType)
+            def latestVersionName = project.ext.incrementVersionName(buildVariantType, versionType)
+            println "-----------------------------------------------------------------------------"
+            println "              Writing Latest Version name to Jenkins file"
+            println "-----------------------------------------------------------------------------"
+            project.ext.writeToJenkinFile(latestVersionName)
+            println "-----------------------------------------------------------------------------"
+            println "              Compiling Build according to " + buildVariantType
+            println "-----------------------------------------------------------------------------"
+        }
+    }
+
+    task revertVersionCodeForVariant {
+        description 'Task for incrementing versionCode & versionNumber According to Build Variant and version type'
+        doLast {
+            println "-----------------------------------------------------------------------------"
+            println "              Reverting Version Code For " + buildVariantType
+            println "-----------------------------------------------------------------------------"
+            project.ext.revertVersionCodeAndName(buildVariantType)
+        }
+    }
+}
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
+
+
+    defaultConfig {
+        applicationId "com.cc.fastlane"
+        minSdkVersion 15
+        targetSdkVersion 25
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    signingConfigs {
+        Release {
+            def Properties props_cc_release = new Properties()
+            def propFile_cc_release = new File('cc.release.signing.properties')
+            if (propFile_cc_release.canRead()) {
+                props_cc_release.load(new FileInputStream(propFile_cc_release))
+                if (props_cc_release != null && props_cc_release.containsKey('STORE_FILE') && props_cc_release.containsKey('STORE_PASSWORD') &&
+                        props_cc_release.containsKey('KEY_ALIAS') && props_cc_release.containsKey('KEY_PASSWORD')) {
+                    android.signingConfigs.Release.storeFile = file(props_cc_release['STORE_FILE'])
+                    android.signingConfigs.Release.storePassword = props_cc_release['STORE_PASSWORD']
+                    android.signingConfigs.Release.keyAlias = props_cc_release['KEY_ALIAS']
+                    android.signingConfigs.Release.keyPassword = props_cc_release['KEY_PASSWORD']
+                } else {
+                    println 'cc.release.signing.properties found but some entries are missing'
+                    android.buildTypes.Release.signingConfig = null
+                }
+            } else {
+                println 'cc.release.signing.properties not found'
+                //android.buildTypes.Release.signingConfig = null
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles 'proguard-project.txt'
+            // proguardFiles 'proguard-project-allowlogs.txt'
+            signingConfig signingConfigs.Release
+        }
+    }
+
+    productFlavors {
+        production {
+            applicationId "com.cc.fastlane"
+            versionCode readVersionCode("production")
+            versionName readVersionName("production")
+            manifestPlaceholders = [crashlyticsKey: 'd8bcddda23ca8041fd647eb2cdb0a406d25c007b']
+        }
+        qa {
+            applicationId "com.cc.fastlane"
+            versionCode readVersionCode("qa")
+            versionName readVersionName("qa")
+            manifestPlaceholders = [crashlyticsKey: 'd8bcddda23ca8041fd647eb2cdb0a406d25c007b']
+        }
+        development {
+            applicationId "com.cc.fastlane"
+            versionCode readVersionCode("development")
+            versionName readVersionName("development")
+            manifestPlaceholders = [crashlyticsKey: 'd8bcddda23ca8041fd647eb2cdb0a406d25c007b']
+        }
+
+
+        applicationVariants.all { variant ->
+            variant.outputs.each { output ->
+                def date = new Date();
+                /*def formattedDate = date.format('yyyy-MM-dd-HH:mm:ss')*/
+                /*def formattedDate = date.format('dd-MM-yyyy HH-mm aa')*/
+                if (variant.productFlavors[0].name == "production") {
+                    output.outputFile = new File(output.outputFile.parent,
+                            output.outputFile.name.replace("app-production-release", "fastlane_production" + "-" + System.getenv('BUILD_TIMESTAMP')));
+                } else if (variant.productFlavors[0].name == "development") {
+                    output.outputFile = new File(output.outputFile.parent,
+                            output.outputFile.name.replace("app-development-release", "fastlane_development" + "-" + System.getenv('BUILD_TIMESTAMP')));
+                } else if (variant.productFlavors[0].name == "qa") {
+                    output.outputFile = new File(output.outputFile.parent,
+                            output.outputFile.name.replace("app-qa-release", "fastlane_qa" + "-" + System.getenv('BUILD_TIMESTAMP')));
+                }
+            }
+        }
+    }
+
+}
+
+/***
+ * Return Version Name for display according to Build Variant
+ * @param buildType Select Build Variant for displaying version name
+ * @return Returns version name in major.minor.patch.(build number) format
+ */
+def readVersionName(def buildType = "buildVariant") {
+    def version = project.ext.readVersionFile(buildType)
+    return "${version['VERSION_MAJOR']}.${version['VERSION_MINOR']}.${version['VERSION_PATCH']}.(${version['VERSION_BUILD']})"
+}
+
+/***
+ * Return Build Number for application according to Build variant
+ * @param buildType Select Build Variant for displaying version name
+ * @return Returns version code which would be our build number
+ */
+def readVersionCode(def buildType = "buildVariant") {
+    def version = project.ext.readVersionFile(buildType)
+    def build = version['VERSION_CODE'] as int
+    return build
+}
+
+/*
+tasks.whenTaskAdded { task ->
+    if (task.name == 'preBuild') {
+        println 'I need preBuild to run before me.'
+        println task.name + "\n"
+        task.dependsOn(performVersionCodeAndVersionNumberIncrementForDevelopment)
+    }
+}
+*/
+
+
+
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    compile 'com.android.support:appcompat-v7:25.2.0'
+    testCompile 'junit:junit:4.12'
+    compile('com.crashlytics.sdk.android:crashlytics:2.6.6@aar') {
+        transitive = true;
+    }
+    compile('com.crashlytics.sdk.android:crashlytics-ndk:1.1.6@aar') {
+        transitive = true;
+    }
+}
+
+crashlytics {
+    enableNdk true
+    androidNdkOut 'src/main/obj'
+    androidNdkLibsOut 'src/main/libs'
+}
